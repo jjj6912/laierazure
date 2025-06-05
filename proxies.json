@@ -5,13 +5,13 @@
       "matchCondition": {
         "route": "/api/chat"
       },
-      "backendUri": "https://laier-functions.azurewebsites.net/api/chatproxy?code=<FUNCTION_KEY>"
+      "backendUri": "https://laier-functions.azurewebsites.net/api/chatproxy?code=<N8VJscpjryCJj1dAsFi4rLiy83eEl7Era1u2ZJMxQvZfAzFuwn9aJw==>"
     },
     "upload": {
       "matchCondition": {
         "route": "/api/upload"
       },
-      "backendUri": "https://laier-functions.azurewebsites.net/api/upload_file?code=<FUNCTION_KEY>"
+      "backendUri": "https://laier-functions.azurewebsites.net/api/upload_file?code=<N8VJscpjryCJj1dAsFi4rLiy83eEl7Era1u2ZJMxQvZfAzFuwn9aJw==>"
     }
   }
 }
