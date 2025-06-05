@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json.schemastore.org/proxies",
+  "proxies": {
+    "chat": {
+      "matchCondition": {
+        "route": "/api/chat"
+      },
+      "backendUri": "https://laier-functions.azurewebsites.net/api/chatproxy?code=<FUNCTION_KEY>"
+    },
+    "upload": {
+      "matchCondition": {
+        "route": "/api/upload"
+      },
+      "backendUri": "https://laier-functions.azurewebsites.net/api/upload_file?code=<FUNCTION_KEY>"
+    }
+  }
+}
