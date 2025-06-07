@@ -1,10 +1,21 @@
 import os, json, uuid, requests, azure.functions as func
+import logging                                # new
 
-EP  = os.environ["AZURE_OPENAI_ENDPOINT"]
-KEY = os.environ["AZURE_OPENAI_KEY"]
-HDR = {"api-key": KEY}
+def get_settings():                           # new helper
+    ep  = os.getenv("AZURE_OPENAI_ENDPOINT")
+    key = os.getenv("AZURE_OPENAI_KEY")
+    if not ep or not key:
+        logging.error("Missing AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_KEY")
+        return None
+    return ep, key
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
+    settings = get_settings()
+    if not settings:
+        return func.HttpResponse("Server configuration error", status_code=500)
+    EP, KEY = settings
+    HDR = {"api-key": KEY}
+
     file      = req.files.get("file")
     thread_id = req.form.get("thread_id", "")
     vs_id     = req.form.get("vs_id", "")
@@ -29,5 +40,5 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(
         json.dumps({"file_id": fid, "vs_id": vs_id, "thread_id": thread_id}),
-        mimetype="application/json"
+        mimetype="application/json",
     )
