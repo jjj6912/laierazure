@@ -1,0 +1,13 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 1em;
+}
+
+#log {
+  border: 1px solid #ddd;
+  padding: 6px;
+}
+
+textarea {
+  width: 100%;
+}
