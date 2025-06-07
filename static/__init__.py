@@ -1,7 +1,7 @@
 import azure.functions as func
-import os
-import mimetypes
-import logging
+import os, mimetypes, logging
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../wwwroot"))  # new
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     filepath = req.route_params.get("filepath")
@@ -9,14 +9,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         logging.warning("File path not provided in request.")
         return func.HttpResponse("File path not provided", status_code=400)
 
-    # Resolve the absolute path to the file in wwwroot
-    # __file__ is the path to the current script (static/__init__.py)
-    # os.path.dirname(__file__) is the directory of the current script (static/)
-    # os.path.join(os.path.dirname(__file__), "../wwwroot") is <repo_root>/wwwroot
-    full_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../wwwroot", filepath))
-    
+    full_path = os.path.abspath(os.path.join(ROOT, filepath))
+    if not full_path.startswith(ROOT):                                           # new check
+        logging.warning(f"Path traversal attempt: {filepath}")
+        return func.HttpResponse("Forbidden", status_code=403)
+
     logging.info(f"Attempting to serve file: {full_path}")
-    
+
     file_exists = os.path.exists(full_path) and os.path.isfile(full_path)
     logging.info(f"File exists: {file_exists}")
 
