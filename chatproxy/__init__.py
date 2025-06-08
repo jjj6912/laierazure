@@ -1,7 +1,11 @@
-import os, json, time, requests, azure.functions as func
-import logging                                  # new
+import os, json, time, logging
+import azure.functions as func
+from openai import AzureOpenAI
 
-def get_settings():                             # new helper
+# La versión de la API para asistentes
+API_VERSION = "2024-05-01-preview"
+
+def get_settings():
     ep  = os.getenv("AZURE_OPENAI_ENDPOINT")
     key = os.getenv("AZURE_OPENAI_KEY")
     ag   = os.getenv("AGENT_ID")
@@ -15,45 +19,63 @@ def get_settings():                             # new helper
         return None
     return ep, key, ag
 
-def wait(url, hdr):
-    while True:
-        run = requests.get(url, headers=hdr).json()
-        if run["status"] in ("completed", "failed"):
-            return
-        time.sleep(0.7)
+def wait_on_run(client, run, thread_id):
+    while run.status == "queued" or run.status == "in_progress":
+        run = client.beta.threads.runs.retrieve(
+            thread_id=thread_id,
+            run_id=run.id,
+        )
+        time.sleep(0.5)
+    return run
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     settings = get_settings()
-    if not settings:                             # return 500 if misconfigured
+    if not settings:
         return func.HttpResponse("Server configuration error", status_code=500)
     EP, KEY, AG = settings
-    HDR = {"api-key": KEY, "Content-Type": "application/json"}
 
-    b        = req.get_json()
-    msg      = b.get("message")
-    thread   = b.get("thread_id")
-    vs_id    = b.get("vs_id")
+    try:
+        client = AzureOpenAI(api_version=API_VERSION, azure_endpoint=EP, api_key=KEY)
 
-    if not msg:
-        return func.HttpResponse("Missing message", status_code=400)
+        b        = req.get_json()
+        msg      = b.get("message")
+        thread_id = b.get("thread_id")
+        vs_id    = b.get("vs_id")
 
-    if not thread:
-        thread = requests.post(f"{EP}/threads", headers=HDR, json={}).json()["id"]
+        if not msg:
+            return func.HttpResponse("Missing message", status_code=400)
 
-    requests.post(f"{EP}/threads/{thread}/messages",
-                  headers=HDR, json={"role": "user", "content": msg})
+        # 1. Si no hay hilo (thread), créalo
+        if not thread_id:
+            thread = client.beta.threads.create()
+            thread_id = thread.id
 
-    run = requests.post(f"{EP}/threads/{thread}/runs", headers=HDR, json={
-        "assistant_id": AG,
-        "tool_resources": {"file_search": {"vector_store_ids": [vs_id]}} if vs_id else {}
-    }).json()
+        # 2. Añade el mensaje del usuario al hilo
+        client.beta.threads.messages.create(
+            thread_id=thread_id, role="user", content=msg
+        )
+        
+        # 3. Ejecuta el asistente
+        tool_resources = {"file_search": {"vector_store_ids": [vs_id]}} if vs_id else {}
+        run = client.beta.threads.runs.create(
+            thread_id=thread_id,
+            assistant_id=AG,
+            tool_resources=tool_resources
+        )
+        wait_on_run(client, run, thread_id)
 
-    wait(f"{EP}/threads/{thread}/runs/{run['id']}", HDR)
+        # 4. Obtén la respuesta
+        messages = client.beta.threads.messages.list(thread_id=thread_id, order="asc", after=run.id)
+        reply = "No se encontró respuesta."
+        for m in messages.data:
+             if m.role == 'assistant':
+                reply = m.content[0].text.value
+                break
 
-    last  = requests.get(f"{EP}/threads/{thread}/messages", headers=HDR).json()["data"][0]
-    reply = last["content"][0]["text"]["value"]
-
-    return func.HttpResponse(
-        json.dumps({"reply": reply, "thread_id": thread, "vs_id": vs_id}),
-        mimetype="application/json",
-    )
+        return func.HttpResponse(
+            json.dumps({"reply": reply, "thread_id": thread_id, "vs_id": vs_id}),
+            mimetype="application/json",
+        )
+    except Exception as e:
+        logging.error(f"Error in chatproxy: {e}")
+        return func.HttpResponse("Internal Server Error", status_code=500)
