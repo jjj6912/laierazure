@@ -1,7 +1,11 @@
-import os, json, uuid, requests, azure.functions as func
-import logging                                # new
+import os, json, uuid, logging
+import azure.functions as func
+from openai import AzureOpenAI
 
-def get_settings():                           # new helper
+# La versión de la API para asistentes
+API_VERSION = "2024-05-01-preview"
+
+def get_settings():
     ep  = os.getenv("AZURE_OPENAI_ENDPOINT")
     key = os.getenv("AZURE_OPENAI_KEY")
     if not ep or not key:
@@ -14,30 +18,39 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     if not settings:
         return func.HttpResponse("Server configuration error", status_code=500)
     EP, KEY = settings
-    HDR = {"api-key": KEY}
 
-    file      = req.files.get("file")
-    thread_id = req.form.get("thread_id", "")
-    vs_id     = req.form.get("vs_id", "")
+    try:
+        client = AzureOpenAI(api_version=API_VERSION, azure_endpoint=EP, api_key=KEY)
 
-    if not file:
-        return func.HttpResponse("No file", status_code=400)
+        file      = req.files.get("file")
+        thread_id = req.form.get("thread_id", "")
+        vs_id     = req.form.get("vs_id", "")
 
-    # 1· si aún no hay vector store para este hilo, créalo
-    if not vs_id:
-        vs     = requests.post(f"{EP}/vectorstores", headers=HDR,
-                               json={"name": f"vs-{uuid.uuid4()[:8]}"}).json()
-        vs_id  = vs["id"]
+        if not file:
+            return func.HttpResponse("No file", status_code=400)
 
-    # 2· sube el archivo
-    up  = requests.post(f"{EP}/files?purpose=assistants", headers=HDR,
-                        files={"file": (file.filename, file.stream, file.content_type)}).json()
-    fid = up["id"]
+        # 1. si aún no hay vector store para este hilo, créalo
+        if not vs_id:
+            vector_store = client.beta.vector_stores.create(name=f"vs-{uuid.uuid4().hex[:8]}")
+            vs_id = vector_store.id
 
-    # 3· indexa en ese vector store
-    requests.post(f"{EP}/vectorstores/{vs_id}/filebatches",
-                  headers=HDR, json={"file_ids": [fid]})
+        # 2. sube el archivo a OpenAI
+        file_bytes = file.stream.read()
+        file_obj = client.files.create(file=(file.filename, file_bytes), purpose='assistants')
+        
+        # 3. indexa el fichero en el vector store
+        client.beta.vector_stores.file_batches.create(
+            vector_store_id=vs_id,
+            file_ids=[file_obj.id]
+        )
 
+        return func.HttpResponse(
+            json.dumps({"file_id": file_obj.id, "vs_id": vs_id, "thread_id": thread_id}),
+            mimetype="application/json",
+        )
+    except Exception as e:
+        logging.error(f"Error in upload_file: {e}")
+        return func.HttpResponse("Internal Server Error", status_code=500)
     return func.HttpResponse(
         json.dumps({"file_id": fid, "vs_id": vs_id, "thread_id": thread_id}),
         mimetype="application/json",
