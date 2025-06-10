@@ -1,8 +1,18 @@
 {
   "scriptFile": "__init__.py",
   "bindings": [
-    { "type":"httpTrigger","direction":"in","name":"req",
-      "authLevel":"anonymous","methods":["post"] },
-    { "type":"http","direction":"out","name":"$return" }
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": [ "post" ],
+      "route": "chatproxy"
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "$return"
+    }
   ]
 }
