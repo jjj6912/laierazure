@@ -1,0 +1,4 @@
+azure-functions
+requests
+python-multipart
+azure-data-tables
