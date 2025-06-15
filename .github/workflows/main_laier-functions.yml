@@ -11,12 +11,14 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
-  PYTHON_VERSION: '3.11' # set this to the python version to use
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
+  PYTHON_VERSION: '3.11'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Añadido de nuevo: Permiso para iniciar sesión en Azure
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
