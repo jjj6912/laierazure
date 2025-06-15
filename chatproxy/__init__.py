@@ -12,10 +12,15 @@ QUOTA=600
 def inc(uid):
     month=dt.datetime.utcnow().strftime("%Y-%m")
     try:
-        row=tbl.get_entity(month,uid); c=row["count"]
-        if c>=QUOTA: return False
-        row["count"]=c+1; tbl.update_entity(row,mode="Merge")
-    except: tbl.create_entity({"PartitionKey":month,"RowKey":uid,"count":1})
+        row = tbl.get_entity(month, uid)
+        count = row["count"]
+        if count >= QUOTA:
+            return False
+        row["count"] = count + 1
+        tbl.update_entity(row, mode="Merge")
+    except ResourceNotFoundError:
+        # This will only run if the entity does not exist
+        tbl.create_entity({"PartitionKey": month, "RowKey": uid, "count": 1})
     return True
 # ------------------------------------------
 
