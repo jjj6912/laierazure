@@ -1,5 +1,5 @@
 import os, time, json, requests, datetime as dt, azure.functions as func
-from azure.data.tables import TableClient
+from azure.data.tables import TableClient, UpdateMode
 from azure.core.exceptions import ResourceNotFoundError
 
 EP  = os.getenv("ENDPOINT_URL")
@@ -18,7 +18,7 @@ def inc(uid):
         if count >= QUOTA:
             return False
         row["count"] = count + 1
-        tbl.update_entity(row, mode="Merge")
+        tbl.update_entity(row, mode=UpdateMode.MERGE)
     except ResourceNotFoundError:
         # This will only run if the entity does not exist
         tbl.create_entity({"PartitionKey": month, "RowKey": uid, "count": 1})
