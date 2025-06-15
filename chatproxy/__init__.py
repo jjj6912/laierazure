@@ -1,5 +1,6 @@
 import os, time, json, requests, datetime as dt, azure.functions as func
-from azure.data.tables import TableClient, ResourceNotFoundError
+from azure.data.tables import TableClient
+from azure.core.exceptions import ResourceNotFoundError
 
 EP  = os.getenv("ENDPOINT_URL")
 KEY = os.getenv("AZURE_OPENAI_API_KEY")
