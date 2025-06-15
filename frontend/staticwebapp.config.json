@@ -1,8 +1,12 @@
 {
   "routes": [
     {
-      "route": "/api/*",
-      "rewrite": "/api/*"
+      "route": "/api/chat",
+      "rewrite": "/api/chatproxy"
+    },
+    {
+      "route": "/api/upload",
+      "rewrite": "/api/upload_file"
     }
   ]
 }
