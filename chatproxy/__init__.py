@@ -24,6 +24,11 @@ STORAGE_CONN_STR = os.getenv("QUOTA_TABLE_CONN_STR")
 # El cliente se inicializa una sola vez para reutilizar la conexión.
 # El nombre de la tabla ('quota') está incluido en la SAS, por lo que no se especifica aquí.
 table_client = TableClient.from_connection_string(conn_str=STORAGE_CONN_STR, table_name="quota")
+if not STORAGE_CONN_STR:
+    logging.warning("🔴 QUOTA_TABLE_CONN_STR está vacía")
+else:
+    logging.warning("🟡 QUOTA_TABLE_CONN_STR len=%d, primeras 60 chars=%s…",
+                    len(STORAGE_CONN_STR), STORAGE_CONN_STR[:60])
 
 # --- 2. Lógica de Cuota Atómica y Robusta ---
 
