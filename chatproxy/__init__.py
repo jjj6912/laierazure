@@ -1,4 +1,4 @@
-# Fichero: chatproxy/__init__.py - Versión Final de Producción
+# Fichero: chatproxy/__init__.py - Versión Corregida
 
 import os
 import json
@@ -9,14 +9,15 @@ from datetime import datetime, timedelta, timezone
 import azure.functions as func
 from azure.data.tables import TableClient, UpdateMode
 from azure.core.exceptions import ResourceNotFoundError, ResourceModifiedError
+from azure.core import MatchConditions # CAMBIO 1: Añadir esta importación
 
 # --- 1. Configuración ---
 # Estas variables se obtienen de la Configuración de la Aplicación,
 # que a su vez las obtiene de forma segura desde Key Vault.
 ENDPOINT_URL = os.getenv("ENDPOINT_URL")
-OPENAI_KEY   = os.getenv("AZURE_OPENAI_API_KEY")
+OPENAI_KEY    = os.getenv("AZURE_OPENAI_API_KEY")
 DEPLOYMENT_NAME = os.getenv("DEPLOYMENT_NAME")
-HEADERS      = {"api-key": OPENAI_KEY, "Content-Type": "application/json"}
+HEADERS       = {"api-key": OPENAI_KEY, "Content-Type": "application/json"}
 
 # Se usa la nueva cadena de conexión segura y restringida, obtenida desde Key Vault.
 STORAGE_CONN_STR = os.getenv("QUOTA_TABLE_CONN_STR")
@@ -77,8 +78,8 @@ def check_and_increment_quota(user_id: str) -> int:
             if not entity_etag:
                 table_client.create_entity(entity=entity)
             else:
-                # LÍNEA 80 CORREGIDA
-                table_client.update_entity(entity, mode=UpdateMode.REPLACE, etag=entity_etag)
+                # CAMBIO 2: Añadir el parámetro 'match_condition' con el valor correcto
+                table_client.update_entity(entity, mode=UpdateMode.REPLACE, etag=entity_etag, match_condition=MatchConditions.IfNotModified)
             
             # Éxito: devuelve el número de usos restantes
             return QUOTA_LIMIT - entity["counter"]
