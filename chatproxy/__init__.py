@@ -77,7 +77,8 @@ def check_and_increment_quota(user_id: str) -> int:
             if not entity_etag:
                 table_client.create_entity(entity=entity)
             else:
-                table_client.update_entity(entity, mode=UpdateMode.REPLACE, etag=entity_etag, match_condition="IfMatch")
+                # LÍNEA 80 CORREGIDA
+                table_client.update_entity(entity, mode=UpdateMode.REPLACE, etag=entity_etag)
             
             # Éxito: devuelve el número de usos restantes
             return QUOTA_LIMIT - entity["counter"]
